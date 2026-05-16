@@ -1,6 +1,34 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+expand_home_path() {
+  local path="$1"
+
+  case "$path" in
+    '~')
+      printf '%s\n' "$HOME"
+      ;;
+    '~'/*)
+      printf '%s\n' "$HOME/${path#~/}"
+      ;;
+    '$HOME')
+      printf '%s\n' "$HOME"
+      ;;
+    '$HOME'/*)
+      printf '%s\n' "$HOME/${path#\$HOME/}"
+      ;;
+    '${HOME}')
+      printf '%s\n' "$HOME"
+      ;;
+    '${HOME}'/*)
+      printf '%s\n' "$HOME/${path#\$\{HOME\}/}"
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   docker_cmd() {
     docker "$@"
@@ -17,8 +45,11 @@ ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
 MODEL_REPO="${MODEL_REPO:-lmstudio-community/Qwen3.6-27B-GGUF}"
 MODEL_FILE="${MODEL_FILE:-Qwen3.6-27B-Q4_K_M.gguf}"
 MODEL_DIR_NAME="${MODEL_DIR_NAME:-${MODEL_FILE%.gguf}}"
+ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 MODEL_DIR="${MODEL_DIR:-${ROOT_DIR}/models/${MODEL_DIR_NAME}}"
 HF_HOME_DIR="${HF_HOME_DIR:-${ROOT_DIR}/hf-home}"
+MODEL_DIR="$(expand_home_path "${MODEL_DIR}")"
+HF_HOME_DIR="$(expand_home_path "${HF_HOME_DIR}")"
 DOWNLOAD_IMAGE="${DOWNLOAD_IMAGE:-python:3.12-slim}"
 
 mkdir -p "${MODEL_DIR}" "${HF_HOME_DIR}"

@@ -3,6 +3,34 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+expand_home_path() {
+  local path="$1"
+
+  case "$path" in
+    '~')
+      printf '%s\n' "$HOME"
+      ;;
+    '~'/*)
+      printf '%s\n' "$HOME/${path#~/}"
+      ;;
+    '$HOME')
+      printf '%s\n' "$HOME"
+      ;;
+    '$HOME'/*)
+      printf '%s\n' "$HOME/${path#\$HOME/}"
+      ;;
+    '${HOME}')
+      printf '%s\n' "$HOME"
+      ;;
+    '${HOME}'/*)
+      printf '%s\n' "$HOME/${path#\$\{HOME\}/}"
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   docker_cmd() {
     docker "$@"
@@ -22,6 +50,7 @@ VERIFY_IMAGE="${VERIFY_IMAGE:-nvidia/cuda:12.4.0-base-ubuntu22.04}"
 INSTALL_DOCKER="${INSTALL_DOCKER:-1}"
 INSTALL_NVIDIA_TOOLKIT="${INSTALL_NVIDIA_TOOLKIT:-1}"
 ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
+ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 LLAMA_CACHE_DIR="${ROOT_DIR}/llama-cache"
 
 mkdir -p "${LLAMA_CACHE_DIR}"

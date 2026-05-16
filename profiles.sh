@@ -1,5 +1,33 @@
 #!/usr/bin/env bash
 
+expand_home_path() {
+  local path="$1"
+
+  case "$path" in
+    '~')
+      printf '%s\n' "$HOME"
+      ;;
+    '~'/*)
+      printf '%s\n' "$HOME/${path#~/}"
+      ;;
+    '$HOME')
+      printf '%s\n' "$HOME"
+      ;;
+    '$HOME'/*)
+      printf '%s\n' "$HOME/${path#\$HOME/}"
+      ;;
+    '${HOME}')
+      printf '%s\n' "$HOME"
+      ;;
+    '${HOME}'/*)
+      printf '%s\n' "$HOME/${path#\$\{HOME\}/}"
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "Use this script via: source ./4090prepare/profiles.sh <profile>" >&2
   exit 1
@@ -21,6 +49,7 @@ if [[ -z "${PROFILE_NAME}" ]]; then
 fi
 
 export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
+export ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 export IMAGE_TAG="${IMAGE_TAG:-llama-server:${PROFILE_NAME}}"
 export CUDA_IMAGE="${CUDA_IMAGE:-nvidia/cuda:12.4.0-devel-ubuntu22.04}"
 export VERIFY_IMAGE="${VERIFY_IMAGE:-nvidia/cuda:12.4.0-base-ubuntu22.04}"
@@ -33,6 +62,9 @@ export MODEL_DIR_NAME="${MODEL_DIR_NAME:-${MODEL_FILE%.gguf}}"
 export MODEL_DIR="${MODEL_DIR:-${ROOT_DIR}/models/${MODEL_DIR_NAME}}"
 export HF_HOME_DIR="${HF_HOME_DIR:-${ROOT_DIR}/hf-home}"
 export LLAMA_CACHE_DIR="${LLAMA_CACHE_DIR:-${ROOT_DIR}/llama-cache}"
+export MODEL_DIR="$(expand_home_path "${MODEL_DIR}")"
+export HF_HOME_DIR="$(expand_home_path "${HF_HOME_DIR}")"
+export LLAMA_CACHE_DIR="$(expand_home_path "${LLAMA_CACHE_DIR}")"
 
 export CONTAINER_NAME="${CONTAINER_NAME:-llama-server-${PROFILE_NAME}}"
 export HOST="${HOST:-0.0.0.0}"
