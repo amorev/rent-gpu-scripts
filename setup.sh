@@ -50,22 +50,34 @@ VERIFY_IMAGE="${VERIFY_IMAGE:-nvidia/cuda:12.4.0-base-ubuntu22.04}"
 INSTALL_DOCKER="${INSTALL_DOCKER:-1}"
 INSTALL_NVIDIA_TOOLKIT="${INSTALL_NVIDIA_TOOLKIT:-1}"
 INSTALL_NVIDIA_DRIVER="${INSTALL_NVIDIA_DRIVER:-1}"
-NVIDIA_DRIVER_PACKAGE="${NVIDIA_DRIVER_PACKAGE:-nvidia-driver-535}"
+NVIDIA_DRIVER_PACKAGE="${NVIDIA_DRIVER_PACKAGE:-}"
 ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
 ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 LLAMA_CACHE_DIR="${ROOT_DIR}/llama-cache"
 
 mkdir -p "${LLAMA_CACHE_DIR}"
 
-if [[ "${INSTALL_NVIDIA_DRIVER}" == "1" ]]; then
-  echo "[1/5] Ensuring NVIDIA driver on host"
+echo "[1/5] Checking NVIDIA driver on host"
+if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+  echo "NVIDIA driver is already working"
+elif [[ "${INSTALL_NVIDIA_DRIVER}" == "1" ]]; then
+  echo "nvidia-smi is not working, installing NVIDIA driver"
   sudo apt-get update
+  sudo apt-get install -y ubuntu-drivers-common pciutils
   sudo apt-get install -y "linux-headers-$(uname -r)" "linux-modules-extra-$(uname -r)"
-  sudo apt-get install --reinstall -y "${NVIDIA_DRIVER_PACKAGE}"
+  lspci -nn | grep -Ei 'nvidia|vga|3d' || true
+  ubuntu-drivers devices || true
+  ubuntu-drivers list --gpgpu || true
+  if [[ -n "${NVIDIA_DRIVER_PACKAGE}" ]]; then
+    sudo apt-get install --reinstall -y "${NVIDIA_DRIVER_PACKAGE}"
+  else
+    sudo ubuntu-drivers install --gpgpu
+  fi
   sudo modprobe nvidia || true
   nvidia-smi
 else
-  echo "[1/5] Skipping NVIDIA driver setup"
+  echo "nvidia-smi is not working and INSTALL_NVIDIA_DRIVER=0" >&2
+  exit 1
 fi
 
 if command -v docker >/dev/null 2>&1; then
