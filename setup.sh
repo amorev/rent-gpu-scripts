@@ -39,6 +39,17 @@ detect_nvidia_branch() {
   return 1
 }
 
+detect_gpu_name() {
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n 1
+    return
+  fi
+
+  if command -v lspci >/dev/null 2>&1; then
+    lspci | grep -Ei 'nvidia|vga|3d' | head -n 1
+  fi
+}
+
 expand_home_path() {
   local path="$1"
 
@@ -104,12 +115,13 @@ elif [[ "${INSTALL_NVIDIA_DRIVER}" == "1" ]]; then
   lspci -nn | grep -Ei 'nvidia|vga|3d' || true
   ubuntu-drivers devices || true
   ubuntu-drivers list --gpgpu || true
+  gpu_name="$(detect_gpu_name || true)"
   if [[ -n "${NVIDIA_DRIVER_PACKAGE}" ]]; then
     sudo apt-get install -y "${NVIDIA_DRIVER_PACKAGE}"
-  else
+  elif [[ "${gpu_name}" == *"V100"* ]]; then
     sudo ubuntu-drivers install --gpgpu
-    branch="$(detect_nvidia_branch)"
-    sudo apt-get install -y "nvidia-utils-${branch}"
+  else
+    sudo apt-get install -y nvidia-driver-595-server nvidia-utils-595-server
   fi
   sudo modprobe nvidia || true
   nvidia-smi
