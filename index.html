@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPU Scripts Launcher</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <header class="mb-8 rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/40">
+      <p class="mb-3 inline-flex rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">llama.cpp launcher</p>
+      <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Интерактивная сборка команд для setup, download и run</h1>
+      <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+        Сначала один раз клонируй репозиторий скриптов по HTTP в папку `scripts`, затем выбери GPU-профиль, вставь ссылку на GGUF и запускай готовые команды.
+      </p>
+    </header>
+
+    <div class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      <section class="space-y-6">
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <h2 class="text-xl font-semibold">1. Профиль GPU</h2>
+          <p class="mt-1 text-sm text-slate-400">Базовые значения берутся из `profiles.sh`. Количество GPU автоматически перестраивает команды под multi-GPU.</p>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-2">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">Видеокарта</span>
+              <select id="profile" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm transition focus:border-cyan-400">
+                <option value="3090">RTX 3090</option>
+                <option value="v100">V100</option>
+                <option value="4090" selected>RTX 4090</option>
+                <option value="h100">H100</option>
+                <option value="h200">H200</option>
+                <option value="h100nvl">H100 NVL</option>
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">Количество GPU</span>
+              <input id="gpuCount" type="number" min="1" max="8" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="1">
+            </label>
+          </div>
+
+          <div class="mt-5 grid gap-4">
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">GPU_VISIBLE_DEVICES</span>
+              <input id="gpuVisibleDevices" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="0">
+              <span class="mt-2 block text-xs text-slate-500">Автоматически: `0`, `0,1`, `0,1,2` и так далее. Можно поправить вручную.</span>
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">ROOT_DIR</span>
+              <input id="rootDir" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="$HOME/llama-runtime">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">PORT</span>
+              <input id="port" type="number" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="8080">
+            </label>
+          </div>
+
+          <div class="mt-5 grid gap-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">CTX_SIZE</span>
+              <input id="ctxSize" type="number" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="65536">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">BATCH_SIZE</span>
+              <input id="batchSize" type="number" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="2048">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">UBATCH_SIZE</span>
+              <input id="ubatchSize" type="number" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="512">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">THREADS</span>
+              <input id="threads" type="number" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="12">
+            </label>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <h2 class="text-xl font-semibold">2. Модель Hugging Face</h2>
+          <p class="mt-1 text-sm text-slate-400">Вставь ссылку на GGUF-файл, и поля модели заполнятся автоматически.</p>
+
+          <label class="mt-5 block">
+            <span class="mb-2 block text-sm font-medium text-slate-200">Ссылка на GGUF</span>
+            <textarea id="hfUrl" rows="3" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" placeholder="https://huggingface.co/lmstudio-community/Qwen3.6-27B-GGUF/blob/main/Qwen3.6-27B-Q8_0.gguf"></textarea>
+          </label>
+
+          <div class="mt-4 flex flex-wrap gap-3">
+            <button id="parseUrl" class="rounded-2xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Разобрать ссылку</button>
+            <span id="parseStatus" class="self-center text-sm text-slate-400"></span>
+          </div>
+
+          <div class="mt-5 grid gap-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">MODEL_REPO</span>
+              <input id="modelRepo" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="lmstudio-community/Qwen3.6-27B-GGUF">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">MODEL_FILE</span>
+              <input id="modelFile" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="Qwen3.6-27B-Q4_K_M.gguf">
+            </label>
+          </div>
+
+          <div class="mt-5 grid gap-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">MODEL_DIR_NAME</span>
+              <input id="modelDirName" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="Qwen3.6-27B-Q4_K_M">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">MODEL_ALIAS</span>
+              <input id="modelAlias" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="Qwen3.6-27B-Q4_K_M">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">HF_HOME_DIR</span>
+              <input id="hfHomeDir" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="$HOME/llama-runtime/hf-home">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">LLAMA_CACHE_DIR</span>
+              <input id="llamaCacheDir" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="$HOME/llama-runtime/llama-cache">
+            </label>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <h2 class="text-xl font-semibold">3. Runtime</h2>
+          <p class="mt-1 text-sm text-slate-400">Быстрые настройки для команды запуска.</p>
+
+          <div class="mt-5 grid gap-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">IMAGE_TAG</span>
+              <input id="imageTag" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="llama-server:4090">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">CONTAINER_NAME</span>
+              <input id="containerName" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="llama-server-4090">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">HOST</span>
+              <input id="host" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" value="0.0.0.0">
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">TENSOR_SPLIT</span>
+              <input id="tensorSplit" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" placeholder="1,1">
+              <span class="mt-2 block text-xs text-slate-500">Если GPU больше одной, заполняется автоматически как `1,1`, `1,1,1` и так далее.</span>
+            </label>
+
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">API_KEY</span>
+              <input id="apiKey" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" placeholder="my-secret-key">
+            </label>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <h2 class="text-xl font-semibold">4. Secrets</h2>
+          <p class="mt-1 text-sm text-slate-400">Секреты подставляются только в соответствующие команды.</p>
+
+          <div class="mt-5 grid gap-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-200">HF_TOKEN</span>
+              <input id="hfToken" class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-cyan-400" placeholder="hf_xxx">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <aside class="space-y-6">
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <h2 class="text-xl font-semibold">Что получится</h2>
+          <div id="summary" class="mt-4 space-y-3 text-sm text-slate-300"></div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">Clone</h2>
+            <button data-copy-target="cloneCommand" class="copy-btn rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300">Copy</button>
+          </div>
+          <pre id="cloneCommand" class="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-200"></pre>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">Setup</h2>
+            <button data-copy-target="setupCommand" class="copy-btn rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300">Copy</button>
+          </div>
+          <pre id="setupCommand" class="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-200"></pre>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">Download</h2>
+            <button data-copy-target="downloadCommand" class="copy-btn rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300">Copy</button>
+          </div>
+          <pre id="downloadCommand" class="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-200"></pre>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">Run</h2>
+            <button data-copy-target="runCommand" class="copy-btn rounded-2xl border border-slate-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-cyan-400 hover:text-cyan-300">Copy</button>
+          </div>
+          <pre id="runCommand" class="mt-4 overflow-x-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-200"></pre>
+        </div>
+
+        <div class="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-6 text-sm text-amber-100">
+          <h2 class="text-base font-semibold text-amber-200">Важно</h2>
+          <ul class="mt-3 space-y-2 leading-6 text-amber-100/90">
+            <li>Сначала один раз выполни `Clone` и получи локальную папку `scripts`.</li>
+            <li>Для `download.sh` нужен `HF_TOKEN`.</li>
+            <li>Количество GPU от `1` до `8` автоматически меняет `GPU_VISIBLE_DEVICES`, `TENSOR_SPLIT` и `CONTAINER_NAME`, но не путь к моделям.</li>
+            <li>Параметры в командах выводятся через `export` по одному на строку.</li>
+            <li>Если Docker недоступен без `sudo`, сами скрипты уже переключаются на `sudo docker`.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const REPO_HTTP_URL = "https://github.com/amorev/rent-gpu-scripts";
+    const SCRIPTS_DIR = "scripts";
+
+    const profiles = {
+      "3090": { label: "RTX 3090", cudaArch: "86", ctxSize: "32768", batchSize: "1024", ubatchSize: "256", gpuVisibleDevices: "0", flashAttn: "on" },
+      "v100": { label: "V100", cudaArch: "70", ctxSize: "16384", batchSize: "512", ubatchSize: "128", gpuVisibleDevices: "0", flashAttn: "off" },
+      "4090": { label: "RTX 4090", cudaArch: "89", ctxSize: "65536", batchSize: "2048", ubatchSize: "512", gpuVisibleDevices: "0", flashAttn: "on" },
+      "h100": { label: "H100", cudaArch: "90", ctxSize: "131072", batchSize: "4096", ubatchSize: "1024", gpuVisibleDevices: "0", flashAttn: "on" },
+      "h200": { label: "H200", cudaArch: "90", ctxSize: "200000", batchSize: "4096", ubatchSize: "1024", gpuVisibleDevices: "0", flashAttn: "on" },
+      "h100nvl": { label: "H100 NVL", cudaArch: "90", ctxSize: "200000", batchSize: "4096", ubatchSize: "1024", gpuVisibleDevices: "0", flashAttn: "on" }
+    };
+
+    const fields = {
+      profile: document.getElementById("profile"),
+      gpuCount: document.getElementById("gpuCount"),
+      gpuVisibleDevices: document.getElementById("gpuVisibleDevices"),
+      rootDir: document.getElementById("rootDir"),
+      port: document.getElementById("port"),
+      ctxSize: document.getElementById("ctxSize"),
+      batchSize: document.getElementById("batchSize"),
+      ubatchSize: document.getElementById("ubatchSize"),
+      threads: document.getElementById("threads"),
+      hfUrl: document.getElementById("hfUrl"),
+      modelRepo: document.getElementById("modelRepo"),
+      modelFile: document.getElementById("modelFile"),
+      modelDirName: document.getElementById("modelDirName"),
+      modelAlias: document.getElementById("modelAlias"),
+      hfHomeDir: document.getElementById("hfHomeDir"),
+      llamaCacheDir: document.getElementById("llamaCacheDir"),
+      imageTag: document.getElementById("imageTag"),
+      containerName: document.getElementById("containerName"),
+      host: document.getElementById("host"),
+      tensorSplit: document.getElementById("tensorSplit"),
+      apiKey: document.getElementById("apiKey"),
+      hfToken: document.getElementById("hfToken")
+    };
+
+    const summary = document.getElementById("summary");
+    const cloneCommand = document.getElementById("cloneCommand");
+    const setupCommand = document.getElementById("setupCommand");
+    const downloadCommand = document.getElementById("downloadCommand");
+    const runCommand = document.getElementById("runCommand");
+    const parseStatus = document.getElementById("parseStatus");
+
+    function shellEscape(value) {
+      return "'" + String(value).replace(/'/g, "'\"'\"'") + "'";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function applyProfile(profileName) {
+      const profile = profiles[profileName];
+      fields.ctxSize.value = profile.ctxSize;
+      fields.batchSize.value = profile.batchSize;
+      fields.ubatchSize.value = profile.ubatchSize;
+      syncGpuDerivedFields();
+      syncDerivedDirs();
+    }
+
+    function getGpuCount() {
+      const parsed = Number.parseInt(fields.gpuCount.value, 10);
+      if (Number.isNaN(parsed)) {
+        return 1;
+      }
+      return Math.min(8, Math.max(1, parsed));
+    }
+
+    function makeGpuVisibleDevices(count) {
+      return Array.from({ length: count }, (_, index) => String(index)).join(",");
+    }
+
+    function makeTensorSplit(count) {
+      if (count <= 1) {
+        return "";
+      }
+      return Array.from({ length: count }, () => "1").join(",");
+    }
+
+    function syncGpuDerivedFields() {
+      const profileName = fields.profile.value;
+      const count = getGpuCount();
+      fields.gpuCount.value = String(count);
+      fields.gpuVisibleDevices.value = makeGpuVisibleDevices(count);
+      fields.tensorSplit.value = makeTensorSplit(count);
+      fields.rootDir.value = "$HOME/llama-runtime";
+      fields.imageTag.value = `llama-server:${profileName}`;
+      fields.containerName.value = `llama-server-${profileName}-${count}gpu`;
+    }
+
+    function getParallelValue(count) {
+      return String(count);
+    }
+
+    function syncDerivedDirs() {
+      const rootDir = fields.rootDir.value.trim() || "$HOME/llama-runtime";
+      fields.hfHomeDir.value = `${rootDir}/hf-home`;
+      fields.llamaCacheDir.value = `${rootDir}/llama-cache`;
+    }
+
+    function syncModelDerivedFields() {
+      const modelFile = fields.modelFile.value.trim();
+      const baseName = modelFile.endsWith(".gguf") ? modelFile.slice(0, -5) : modelFile;
+      if (baseName) {
+        fields.modelDirName.value = baseName;
+        fields.modelAlias.value = baseName;
+      }
+    }
+
+    function parseHuggingFaceUrl() {
+      const rawValue = fields.hfUrl.value.trim();
+      if (!rawValue) {
+        parseStatus.textContent = "Вставь ссылку на GGUF-файл.";
+        parseStatus.className = "self-center text-sm text-amber-300";
+        return;
+      }
+
+      let url;
+      try {
+        url = new URL(rawValue);
+      } catch {
+        parseStatus.textContent = "Некорректный URL.";
+        parseStatus.className = "self-center text-sm text-rose-300";
+        return;
+      }
+
+      if (!url.hostname.includes("huggingface.co")) {
+        parseStatus.textContent = "Нужна ссылка с huggingface.co.";
+        parseStatus.className = "self-center text-sm text-rose-300";
+        return;
+      }
+
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts.length < 3) {
+        parseStatus.textContent = "Не удалось определить MODEL_REPO и MODEL_FILE.";
+        parseStatus.className = "self-center text-sm text-rose-300";
+        return;
+      }
+
+      const modelRepo = `${parts[0]}/${parts[1]}`;
+      const modelFile = decodeURIComponent(parts[parts.length - 1]);
+
+      if (!modelFile.endsWith(".gguf")) {
+        parseStatus.textContent = "Ссылка должна указывать на .gguf файл.";
+        parseStatus.className = "self-center text-sm text-rose-300";
+        return;
+      }
+
+      fields.modelRepo.value = modelRepo;
+      fields.modelFile.value = modelFile;
+      syncModelDerivedFields();
+      parseStatus.textContent = `Распознано: ${modelRepo} / ${modelFile}`;
+      parseStatus.className = "self-center text-sm text-emerald-300";
+      render();
+    }
+
+    function getState() {
+      const profileName = fields.profile.value;
+      const profile = profiles[profileName];
+      const tensorSplit = fields.tensorSplit.value.trim();
+      const gpuCount = getGpuCount();
+
+      return {
+        gpuCount,
+        profileName,
+        profile,
+        rootDir: fields.rootDir.value.trim(),
+        imageTag: fields.imageTag.value.trim(),
+        containerName: fields.containerName.value.trim(),
+        gpuVisibleDevices: fields.gpuVisibleDevices.value.trim(),
+        host: fields.host.value.trim(),
+        port: fields.port.value.trim(),
+        ctxSize: fields.ctxSize.value.trim(),
+        batchSize: fields.batchSize.value.trim(),
+        ubatchSize: fields.ubatchSize.value.trim(),
+        threads: fields.threads.value.trim(),
+        modelRepo: fields.modelRepo.value.trim(),
+        modelFile: fields.modelFile.value.trim(),
+        modelDirName: fields.modelDirName.value.trim(),
+        modelAlias: fields.modelAlias.value.trim(),
+        hfHomeDir: fields.hfHomeDir.value.trim(),
+        llamaCacheDir: fields.llamaCacheDir.value.trim(),
+        apiKey: fields.apiKey.value.trim(),
+        hfToken: fields.hfToken.value.trim(),
+        tensorSplit,
+        splitMode: tensorSplit ? "layer" : "none"
+      };
+    }
+
+    function buildExportLines(map, keys) {
+      return keys.map((key) => `export ${key}=${shellEscape(map[key])}`).join("\n");
+    }
+
+    function buildCloneCommand() {
+      return [
+        `if [ -d ${shellEscape(SCRIPTS_DIR)} ]; then`,
+        `  echo ${shellEscape("Directory 'scripts' already exists")}`,
+        `else`,
+        `  git clone ${shellEscape(REPO_HTTP_URL)} ${shellEscape(SCRIPTS_DIR)}`,
+        `fi`
+      ].join("\n");
+    }
+
+    function buildScriptCommand(scriptName, exportBlock) {
+      return [
+        exportBlock,
+        `bash ${shellEscape(`${SCRIPTS_DIR}/${scriptName}`)}`
+      ].join("\n");
+    }
+
+    function renderSummary(state) {
+      summary.innerHTML = [
+        `<div class="rounded-2xl bg-slate-950/80 p-4"><div class="text-xs uppercase tracking-[0.2em] text-slate-500">GPU</div><div class="mt-1 text-base font-semibold text-slate-100">${escapeHtml(state.profile.label)} (${escapeHtml(state.profileName)}, ${escapeHtml(String(state.gpuCount))} шт., CUDA ${escapeHtml(state.profile.cudaArch)})</div></div>`,
+        `<div class="rounded-2xl bg-slate-950/80 p-4"><div class="text-xs uppercase tracking-[0.2em] text-slate-500">Модель</div><div class="mt-1 break-all text-sm text-slate-100">${escapeHtml(state.modelRepo)}/${escapeHtml(state.modelFile)}</div></div>`,
+        `<div class="rounded-2xl bg-slate-950/80 p-4"><div class="text-xs uppercase tracking-[0.2em] text-slate-500">Контекст</div><div class="mt-1 text-sm text-slate-100">CTX ${escapeHtml(state.ctxSize)}, batch ${escapeHtml(state.batchSize)}, ubatch ${escapeHtml(state.ubatchSize)}</div></div>`,
+        `<div class="rounded-2xl bg-slate-950/80 p-4"><div class="text-xs uppercase tracking-[0.2em] text-slate-500">Папка</div><div class="mt-1 break-all text-sm text-slate-100">${escapeHtml(state.rootDir)}</div></div>`
+      ].join("");
+    }
+
+    function render() {
+      const state = getState();
+      renderSummary(state);
+
+      const setupEnv = buildExportLines({
+        ROOT_DIR: state.rootDir,
+        IMAGE_TAG: state.imageTag,
+        CUDA_ARCHITECTURES: state.profile.cudaArch,
+        GPU_VISIBLE_DEVICES: state.gpuVisibleDevices
+      }, ["ROOT_DIR", "IMAGE_TAG", "CUDA_ARCHITECTURES", "GPU_VISIBLE_DEVICES"]);
+
+      const downloadEnv = buildExportLines({
+        HF_TOKEN: state.hfToken,
+        ROOT_DIR: state.rootDir,
+        MODEL_REPO: state.modelRepo,
+        MODEL_FILE: state.modelFile,
+        MODEL_DIR_NAME: state.modelDirName,
+        HF_HOME_DIR: state.hfHomeDir
+      }, ["HF_TOKEN", "ROOT_DIR", "MODEL_REPO", "MODEL_FILE", "MODEL_DIR_NAME", "HF_HOME_DIR"]);
+
+      const runMap = {
+        ROOT_DIR: state.rootDir,
+        IMAGE_TAG: state.imageTag,
+        CONTAINER_NAME: state.containerName,
+        MODEL_REPO: state.modelRepo,
+        MODEL_FILE: state.modelFile,
+        MODEL_DIR_NAME: state.modelDirName,
+        LLAMA_CACHE_DIR: state.llamaCacheDir,
+        MODEL_ALIAS: state.modelAlias || state.modelDirName,
+        GPU_VISIBLE_DEVICES: state.gpuVisibleDevices,
+        HOST: state.host,
+        PORT: state.port,
+        CTX_SIZE: state.ctxSize,
+        BATCH_SIZE: state.batchSize,
+        UBATCH_SIZE: state.ubatchSize,
+        PARALLEL: getParallelValue(state.gpuCount),
+        THREADS: state.threads,
+        THREADS_BATCH: state.threads,
+        SPLIT_MODE: state.splitMode,
+        TENSOR_SPLIT: state.tensorSplit,
+        API_KEY: state.apiKey,
+        MAIN_GPU: state.gpuCount > 1 ? "0" : "0",
+        N_GPU_LAYERS: "999",
+        FLASH_ATTN: state.profile.flashAttn
+      };
+
+      const runKeys = [
+        "ROOT_DIR", "IMAGE_TAG", "CONTAINER_NAME", "MODEL_REPO", "MODEL_FILE", "MODEL_DIR_NAME", "LLAMA_CACHE_DIR",
+        "MODEL_ALIAS", "GPU_VISIBLE_DEVICES", "HOST", "PORT", "CTX_SIZE", "BATCH_SIZE", "UBATCH_SIZE",
+        "PARALLEL", "THREADS", "THREADS_BATCH", "SPLIT_MODE"
+      ];
+
+      if (state.tensorSplit) {
+        runKeys.push("TENSOR_SPLIT");
+      }
+
+      if (state.apiKey) {
+        runKeys.push("API_KEY");
+      }
+
+      runKeys.push("MAIN_GPU", "N_GPU_LAYERS", "FLASH_ATTN");
+
+      cloneCommand.textContent = buildCloneCommand();
+      setupCommand.textContent = buildScriptCommand("setup.sh", setupEnv);
+      downloadCommand.textContent = buildScriptCommand("download.sh", downloadEnv);
+      runCommand.textContent = buildScriptCommand("run.sh", buildExportLines(runMap, runKeys));
+    }
+
+    fields.profile.addEventListener("change", () => {
+      applyProfile(fields.profile.value);
+      render();
+    });
+
+    fields.gpuCount.addEventListener("input", () => {
+      syncGpuDerivedFields();
+      syncDerivedDirs();
+      render();
+    });
+
+    fields.rootDir.addEventListener("input", () => {
+      syncDerivedDirs();
+      render();
+    });
+
+    fields.modelFile.addEventListener("input", () => {
+      syncModelDerivedFields();
+      render();
+    });
+
+    Object.values(fields).forEach((element) => {
+      if (element === fields.profile || element === fields.gpuCount || element === fields.rootDir || element === fields.modelFile) {
+        return;
+      }
+      element.addEventListener("input", render);
+    });
+
+    document.getElementById("parseUrl").addEventListener("click", parseHuggingFaceUrl);
+    fields.hfUrl.addEventListener("change", parseHuggingFaceUrl);
+
+    document.querySelectorAll(".copy-btn").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const targetId = button.getAttribute("data-copy-target");
+        const text = document.getElementById(targetId).textContent;
+        await navigator.clipboard.writeText(text);
+        const original = button.textContent;
+        button.textContent = "Copied";
+        setTimeout(() => {
+          button.textContent = original;
+        }, 1200);
+      });
+    });
+
+    applyProfile(fields.profile.value);
+    syncModelDerivedFields();
+    render();
+  </script>
+</body>
+</html>

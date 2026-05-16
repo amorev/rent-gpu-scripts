@@ -28,6 +28,56 @@ expand_home_path() {
   esac
 }
 
+normalize_cuda_version() {
+  local version="$1"
+
+  case "$version" in
+    *.*.*)
+      printf '%s\n' "$version"
+      ;;
+    *.*)
+      printf '%s.0\n' "$version"
+      ;;
+    *)
+      printf '%s.0.0\n' "$version"
+      ;;
+  esac
+}
+
+detect_cuda_version() {
+  local version=""
+
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    version="$(nvidia-smi | sed -n 's/.*CUDA Version: \([0-9][0-9.]*\).*/\1/p' | head -n 1)"
+  fi
+
+  if [[ -z "$version" ]] && command -v nvcc >/dev/null 2>&1; then
+    version="$(nvcc --version | sed -n 's/.*release \([0-9][0-9.]*\),.*/\1/p' | head -n 1)"
+  fi
+
+  if [[ -n "$version" ]]; then
+    normalize_cuda_version "$version"
+  fi
+}
+
+default_cuda_image() {
+  local flavor="$1"
+  local fallback_version="12.4.0"
+  local cuda_version
+  local cuda_architectures="${CUDA_ARCHITECTURES:-}"
+
+  cuda_version="$(detect_cuda_version)"
+
+  # CUDA 13 drops support for older architectures like sm_70 (V100).
+  if [[ -n "$cuda_architectures" ]] && [[ "$cuda_architectures" -le 70 ]]; then
+    cuda_version="$fallback_version"
+  fi
+
+  cuda_version="${cuda_version:-$fallback_version}"
+
+  printf 'nvidia/cuda:%s-%s-ubuntu22.04\n' "$cuda_version" "$flavor"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "Use this script via: source ./4090prepare/profiles.sh <profile>" >&2
   exit 1
@@ -51,8 +101,6 @@ fi
 export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
 export ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 export IMAGE_TAG="${IMAGE_TAG:-llama-server:${PROFILE_NAME}}"
-export CUDA_IMAGE="${CUDA_IMAGE:-nvidia/cuda:12.4.0-devel-ubuntu22.04}"
-export VERIFY_IMAGE="${VERIFY_IMAGE:-nvidia/cuda:12.4.0-base-ubuntu22.04}"
 export INSTALL_NVIDIA_TOOLKIT="${INSTALL_NVIDIA_TOOLKIT:-1}"
 export DOWNLOAD_IMAGE="${DOWNLOAD_IMAGE:-python:3.12-slim}"
 
@@ -130,6 +178,9 @@ case "${PROFILE_NAME}" in
     return 1
     ;;
 esac
+
+export CUDA_IMAGE="${CUDA_IMAGE:-$(default_cuda_image devel)}"
+export VERIFY_IMAGE="${VERIFY_IMAGE:-$(default_cuda_image base)}"
 
 echo "Loaded GPU profile: ${PROFILE_NAME}"
 echo "  IMAGE_TAG=${IMAGE_TAG}"

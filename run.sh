@@ -84,11 +84,7 @@ fi
 
 mkdir -p "${LLAMA_CACHE_DIR}"
 
-if [[ "${GPU_VISIBLE_DEVICES}" == "all" ]]; then
-  GPU_ARGS=(--gpus all)
-else
-  GPU_ARGS=(--gpus "device=${GPU_VISIBLE_DEVICES}")
-fi
+GPU_ARGS=(--gpus all)
 
 LLAMA_ARGS=(
   --host "${HOST}"
@@ -129,6 +125,7 @@ fi
 
 DOCKER_ENV_ARGS=(
   -e LLAMA_CACHE=/data/llama-cache
+  -e "NVIDIA_VISIBLE_DEVICES=${GPU_VISIBLE_DEVICES}"
 )
 
 if [[ -n "${API_KEY}" ]]; then

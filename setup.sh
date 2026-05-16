@@ -49,16 +49,29 @@ CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES:-89}"
 VERIFY_IMAGE="${VERIFY_IMAGE:-nvidia/cuda:12.4.0-base-ubuntu22.04}"
 INSTALL_DOCKER="${INSTALL_DOCKER:-1}"
 INSTALL_NVIDIA_TOOLKIT="${INSTALL_NVIDIA_TOOLKIT:-1}"
+INSTALL_NVIDIA_DRIVER="${INSTALL_NVIDIA_DRIVER:-1}"
+NVIDIA_DRIVER_PACKAGE="${NVIDIA_DRIVER_PACKAGE:-nvidia-driver-535}"
 ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
 ROOT_DIR="$(expand_home_path "${ROOT_DIR}")"
 LLAMA_CACHE_DIR="${ROOT_DIR}/llama-cache"
 
 mkdir -p "${LLAMA_CACHE_DIR}"
 
+if [[ "${INSTALL_NVIDIA_DRIVER}" == "1" ]]; then
+  echo "[1/5] Ensuring NVIDIA driver on host"
+  sudo apt-get update
+  sudo apt-get install -y "linux-headers-$(uname -r)" "linux-modules-extra-$(uname -r)"
+  sudo apt-get install --reinstall -y "${NVIDIA_DRIVER_PACKAGE}"
+  sudo modprobe nvidia || true
+  nvidia-smi
+else
+  echo "[1/5] Skipping NVIDIA driver setup"
+fi
+
 if command -v docker >/dev/null 2>&1; then
-  echo "[1/4] Docker is already installed"
+  echo "[2/5] Docker is already installed"
 elif [[ "${INSTALL_DOCKER}" == "1" ]]; then
-  echo "[1/4] Installing Docker"
+  echo "[2/5] Installing Docker"
   sudo apt-get update
   sudo apt-get install -y ca-certificates curl gnupg
   sudo install -m 0755 -d /etc/apt/keyrings
@@ -76,7 +89,7 @@ else
   exit 1
 fi
 
-echo "[2/4] Building Docker image: ${IMAGE_TAG}"
+echo "[3/5] Building Docker image: ${IMAGE_TAG}"
 docker_cmd build \
   -f "${DOCKERFILE_PATH}" \
   --build-arg CUDA_IMAGE="${CUDA_IMAGE}" \
@@ -85,16 +98,22 @@ docker_cmd build \
   "${BUILD_CONTEXT}"
 
 if [[ "${INSTALL_NVIDIA_TOOLKIT}" == "1" ]]; then
-  echo "[3/4] Installing NVIDIA Container Toolkit"
+  echo "[4/5] Installing NVIDIA Container Toolkit"
+  sudo apt-get update
+  sudo apt-get install -y curl gnupg ca-certificates
+  curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+  curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
   sudo apt-get update
   sudo apt-get install -y nvidia-container-toolkit
   sudo nvidia-ctk runtime configure --runtime=docker
   sudo systemctl restart docker
 else
-  echo "[3/4] Skipping NVIDIA Container Toolkit installation"
+  echo "[4/5] Skipping NVIDIA Container Toolkit installation"
 fi
 
-echo "[4/4] Verifying Docker GPU access"
+echo "[5/5] Verifying Docker GPU access"
 docker_cmd run --rm --gpus all "${VERIFY_IMAGE}" nvidia-smi
 
 echo "Done"

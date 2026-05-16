@@ -6,7 +6,7 @@ PREPARE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 source "${PREPARE_DIR}/profiles.sh" 4090
 
-export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime/4090-1}"
+export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime}"
 export IMAGE_TAG="${IMAGE_TAG:-llama-server:4090-1}"
 export CONTAINER_NAME="${CONTAINER_NAME:-llama-server-4090-1}"
 export GPU_VISIBLE_DEVICES="${GPU_VISIBLE_DEVICES:-0}"
