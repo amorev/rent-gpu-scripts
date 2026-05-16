@@ -3,6 +3,42 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
+detect_nvidia_branch() {
+  local package=""
+
+  # 1. Если пользователь явно задал драйвер — берём branch из него.
+  if [[ -n "${NVIDIA_DRIVER_PACKAGE:-}" ]]; then
+    package="${NVIDIA_DRIVER_PACKAGE}"
+  else
+    # 2. Иначе берём уже установленный nvidia-driver-* пакет.
+    package="$(
+      dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package}\n' 'nvidia-driver-*' 2>/dev/null \
+        | awk '$1 == "ii" { print $2; exit }'
+    )"
+  fi
+
+  # nvidia-driver-535        -> 535
+  # nvidia-driver-535-server -> 535-server
+  if [[ "${package}" =~ ^nvidia-driver-([0-9]+)(-server)?$ ]]; then
+    printf '%s%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    return 0
+  fi
+
+  # fallback: nvidia-dkms-535-server / nvidia-kernel-source-535
+  package="$(
+    dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package}\n' \
+      'nvidia-dkms-*' 'nvidia-kernel-source-*' 2>/dev/null \
+      | awk '$1 == "ii" { print $2; exit }'
+  )"
+
+  if [[ "${package}" =~ ^nvidia-(dkms|kernel-source)-([0-9]+)(-server)?$ ]]; then
+    printf '%s%s\n' "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    return 0
+  fi
+
+  return 1
+}
+
 expand_home_path() {
   local path="$1"
 
@@ -69,9 +105,11 @@ elif [[ "${INSTALL_NVIDIA_DRIVER}" == "1" ]]; then
   ubuntu-drivers devices || true
   ubuntu-drivers list --gpgpu || true
   if [[ -n "${NVIDIA_DRIVER_PACKAGE}" ]]; then
-    sudo apt-get install --reinstall -y "${NVIDIA_DRIVER_PACKAGE}"
+    sudo apt-get install -y "${NVIDIA_DRIVER_PACKAGE}"
   else
     sudo ubuntu-drivers install --gpgpu
+    branch="$(detect_nvidia_branch)"
+    sudo apt-get install -y "nvidia-utils-${branch}"
   fi
   sudo modprobe nvidia || true
   nvidia-smi
