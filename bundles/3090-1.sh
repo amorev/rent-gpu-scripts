@@ -4,11 +4,11 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREPARE_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
-source "${PREPARE_DIR}/profiles.sh" 4090
+source "${PREPARE_DIR}/profiles.sh" 3090
 
-export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime/4090-1}"
-export IMAGE_TAG="${IMAGE_TAG:-llama-server:4090-1}"
-export CONTAINER_NAME="${CONTAINER_NAME:-llama-server-4090-1}"
+export ROOT_DIR="${ROOT_DIR:-$HOME/llama-runtime/3090-1}"
+export IMAGE_TAG="${IMAGE_TAG:-llama-server:3090-1}"
+export CONTAINER_NAME="${CONTAINER_NAME:-llama-server-3090-1}"
 export GPU_VISIBLE_DEVICES="${GPU_VISIBLE_DEVICES:-0}"
 
 export MODEL_REPO="${MODEL_REPO:-lmstudio-community/Qwen3.6-27B-GGUF}"
@@ -18,7 +18,7 @@ export MODEL_DIR="${MODEL_DIR:-${ROOT_DIR}/models/${MODEL_DIR_NAME}}"
 export HF_HOME_DIR="${HF_HOME_DIR:-${ROOT_DIR}/hf-home}"
 export LLAMA_CACHE_DIR="${LLAMA_CACHE_DIR:-${ROOT_DIR}/llama-cache}"
 
-echo "Preparing single RTX 4090 environment"
+echo "Preparing single RTX 3090 environment"
 echo "  ROOT_DIR=${ROOT_DIR}"
 echo "  IMAGE_TAG=${IMAGE_TAG}"
 echo "  GPU_VISIBLE_DEVICES=${GPU_VISIBLE_DEVICES}"

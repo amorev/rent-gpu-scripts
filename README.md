@@ -24,6 +24,7 @@
 - `MODEL_REPO`: репозиторий Hugging Face для `download.sh`
 - `MODEL_FILE`: имя GGUF-файла для `download.sh` и `run.sh`
 - `MODEL_DIR_NAME`: имя локальной директории модели. По умолчанию: имя файла без `.gguf`
+- `API_KEY`: если задан, будет проброшен в контейнер для `llama-server`
 - `GPU_VISIBLE_DEVICES`: какие GPU отдавать в Docker. Варианты: `all`, `0`, `1`, `0,1`
 - `CTX_SIZE`
 - `BATCH_SIZE`
@@ -70,6 +71,12 @@ bash /path/to/scripts/download.sh
 
 ```bash
 bash /path/to/scripts/run.sh
+```
+
+Если нужен ключ для HTTP API `llama-server`, его можно задать через env:
+
+```bash
+API_KEY=my-secret-key bash /path/to/scripts/run.sh
 ```
 
 При необходимости можно переопределять отдельные переменные уже после загрузки профиля:
@@ -132,3 +139,33 @@ bash /path/to/scripts/run.sh
 - Если `GPU_VISIBLE_DEVICES` не равен `all`, в контейнер будут проброшены только выбранные GPU.
 - Если упираешься в OOM, сначала уменьшай `CTX_SIZE` или `BATCH_SIZE`.
 - Для очень больших моделей на нескольких GPU `TENSOR_SPLIT` обычно нужно подбирать экспериментально.
+
+## Примеры запусков Qwen 3.6
+
+Есть готовые bundle-скрипты:
+
+- `bundles/3090-1.sh`: подготовка окружения под одну RTX 3090
+- `bundles/4090-1.sh`: подготовка окружения под одну RTX 4090
+
+Важно: bundle не сохраняет свои `export` после завершения, потому что запускается через `bash`, а не через `source`. После `bundles/*.sh` запускай `run.sh` с теми же env-переменными, которые bundle печатает в конце одной готовой командой.
+
+### На сервере одна RTX 4090
+В этом случае можно запустить Qwen только в 4-кванте. Остальные уже не влезут только в GPU.
+
+```bash
+# Запуск 35b-a3b
+export MODEL_FILE=Qwen3.6-35B-A3B-Q4_K_M.gguf 
+export MODEL_REPO=lmstudio-community/Qwen3.6-35B-A3B-GGUF
+export CTX_SIZE=100000
+bash scripts/bundles/4090-1.sh
+bash scripts/run.sh
+```
+
+```bash
+# Запуск 35b-a3b
+export MODEL_FILE=Qwen3.6-27B-Q4_K_M.gguf
+export MODEL_REPO=lmstudio-community/Qwen3.6-27B-GGUF
+export CTX_SIZE=100000
+bash scripts/bundles/4090-1.sh
+bash scripts/run.sh
+```
